@@ -5,10 +5,10 @@
 const CR_IMAGES = [
   { key: "retro", url: "https://chennairenegades.com/wp-content/uploads/2025/11/Retro.jpg", label: "Retro Cruiser (1-bed)" },
   { key: "sports", url: "https://chennairenegades.com/wp-content/uploads/2025/11/Sports.jpg", label: "Modern Sports (2-bed)" },
-  { key: "adv", url: "https://chennairenegades.com/wp-content/uploads/2025/11/ADV.jpg", label: "ADV Bike (5-bed)" },
+  { key: "adv", url: "https://chennairenegades.com/wp-content/uploads/2025/11/ADV.jpg", label: "ADV Bike (5-bed)" }
 ];
 
-// Rider list
+// Riders
 const RIDERS = [
   "Sridhar C","Premnath Rajan","Satish kumar Shankaran","Manikandan Arumugam","Mohan Murthy",
   "Lakshmi Narayanan S","Vignesh Balasubramani","Rameshkumar S","Nikkil Nair","Abhilash S",
@@ -18,21 +18,20 @@ const RIDERS = [
   "Venkatesan Srinivasan","Pending Rider"
 ].sort();
 
-// Room counts
 let available = { retro: 3, sports: 14, adv: 10 };
 let assignments = [];
 let remaining = [...RIDERS];
 
 const ADMIN_PIN = "Ananth,@2025#";
 
-/* ===============================
-   BUILD CAROUSEL
-   =============================== */
+
+// =====================================================
+// BUILD CAROUSEL
+// =====================================================
 function cr_buildCarousel() {
   const track = document.querySelector("#cr-carousel-track");
   track.innerHTML = "";
 
-  // Create a long repeated sequence for infinite loop
   for (let i = 0; i < 20; i++) {
     CR_IMAGES.forEach(img => {
       const el = document.createElement("div");
@@ -44,9 +43,10 @@ function cr_buildCarousel() {
   }
 }
 
-/* ===============================
-   RENDER RIDERS
-   =============================== */
+
+// =====================================================
+// RENDER RIDERS
+// =====================================================
 function cr_renderRiders() {
   const list = document.querySelector("#cr-riders-list");
   const sel = document.querySelector("#cr-select");
@@ -67,13 +67,15 @@ function cr_renderRiders() {
   });
 }
 
-/* ===============================
-   SPIN CAROUSEL
-   =============================== */
+
+// =====================================================
+// SPIN CAROUSEL WITH SLOWDOWN + MOTION BLUR
+// =====================================================
 let spinning = false;
 
 function cr_spin() {
   if (spinning) return;
+
   const sel = document.querySelector("#cr-select");
   const rider = sel.value;
   if (!rider) { alert("Select your name first"); return; }
@@ -86,57 +88,104 @@ function cr_spin() {
   track.style.transform = "translateX(0px)";
 
   let pos = 0;
-  const speed = 60; // fast speed
-  const duration = 10000; // 10 sec
 
-  const timer = setInterval(() => {
+  // --- Casino-style slowdown ---
+  let speed = 70;  
+  let phase = 1;   
+  const tick = 40;
+
+  // Add motion blur
+  const root = document.querySelector("#cr-spin-root");
+  root.style.filter = "blur(2px) brightness(1.2)";
+
+  const spinTimer = setInterval(() => {
     pos -= speed;
     track.style.transform = `translateX(${pos}px)`;
-  }, 50);
 
+    // Phase transitions
+    if (phase === 1 && pos < -1400) {
+      speed = 45;
+      phase = 2;
+    }
+    else if (phase === 2 && pos < -3000) {
+      speed = 25;
+      phase = 3;
+    }
+    else if (phase === 3 && pos < -4200) {
+      speed = 10;
+      phase = 4;
+    }
+    else if (phase === 4) {
+      speed -= 0.25;
+      if (speed < 2) speed = 2;
+    }
+
+    // Reduce blur as speed decreases
+    const blurAmount = Math.max(0, Math.min(2, speed / 20));
+    root.style.filter = `blur(${blurAmount}px) brightness(1.1)`;
+
+  }, tick);
+
+
+  // Stop after full animation
   setTimeout(() => {
-    clearInterval(timer);
+    clearInterval(spinTimer);
+
+    root.style.filter = "none"; // remove blur cleanly
+
     cr_stopCarousel(pos, rider);
     spinning = false;
-  }, duration);
+
+  }, 7000);
 }
 
-/* ===============================
-   STOP CAROUSEL & DETECT RESULT
-   =============================== */
+
+// =====================================================
+// STOP & DETECT RESULT — PERFECT CENTER ALIGNMENT
+// =====================================================
 function cr_stopCarousel(pos, rider) {
-  const itemWidth = 420; // width of each image card
+  const itemWidth = 420;
+  const pointerX = itemWidth / 2;
 
-  // Adjust pos by half-width so pointer aligns correctly
-  let index = Math.abs(Math.round((pos + itemWidth / 2) / itemWidth));
-
-  // Wrap index within number of unique images
-  index = index % CR_IMAGES.length;
-
+  const index = Math.abs(Math.floor((pos + pointerX) / itemWidth)) % CR_IMAGES.length;
   const chosenKey = CR_IMAGES[index].key;
 
   cr_finalize(rider, chosenKey);
+
+  cr_flashWinner(); // winning flash effect
 }
 
-/* ===============================
-   ASSIGN ROOM
-   =============================== */
+
+// =====================================================
+// WINNING FLASH EFFECT
+// =====================================================
+function cr_flashWinner() {
+  const container = document.querySelector("#cr-carousel-container");
+
+  container.style.boxShadow = "0 0 40px 15px gold";
+  container.style.transition = "box-shadow 0.2s ease-out";
+
+  setTimeout(() => {
+    container.style.boxShadow = "0 0 0 0 gold";
+  }, 500);
+}
+
+
+// =====================================================
+// ASSIGNMENT LOGIC
+// =====================================================
 function cr_finalize(rider, key) {
   if (available[key] <= 0) {
-    // fallback available type
     if (available.retro > 0) key = "retro";
     else if (available.sports > 0) key = "sports";
     else key = "adv";
   }
 
   available[key] -= 1;
+
   const now = new Date().toLocaleString();
 
-  assignments.push({
-    rider,
-    key,
-    time: now
-  });
+  assignments.push({ rider, key, time: now });
 
   remaining = remaining.filter(r => r !== rider);
   cr_save();
@@ -147,9 +196,10 @@ function cr_finalize(rider, key) {
   document.querySelector("#cr-result").textContent = `${rider} → ${name}`;
 }
 
-/* ===============================
-   ADMIN / SAVE STATE
-   =============================== */
+
+// =====================================================
+// SAVE / LOAD STATE
+// =====================================================
 function cr_save() {
   localStorage.setItem("cr_assign", JSON.stringify(assignments));
   localStorage.setItem("cr_avail", JSON.stringify(available));
@@ -164,6 +214,10 @@ function cr_load() {
   } catch (e) {}
 }
 
+
+// =====================================================
+// UPDATE ADMIN PANEL
+// =====================================================
 function cr_updateAdminPanel() {
   document.querySelector("#s-retro").textContent = available.retro;
   document.querySelector("#s-sports").textContent = available.sports;
@@ -182,9 +236,10 @@ function cr_updateAdminPanel() {
   });
 }
 
-/* ===============================
-   ADMIN LOGIN
-   =============================== */
+
+// =====================================================
+// ADMIN LOGIN
+// =====================================================
 function adminLogin() {
   const pin = prompt("Enter PIN:");
   if (pin === ADMIN_PIN) {
@@ -194,9 +249,10 @@ function adminLogin() {
   }
 }
 
-/* ===============================
-   INIT
-   =============================== */
+
+// =====================================================
+// INIT
+// =====================================================
 window.addEventListener("load", () => {
   cr_load();
   cr_buildCarousel();
