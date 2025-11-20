@@ -145,14 +145,31 @@ function cr_spin() {
 // =====================================================
 function cr_stopCarousel(pos, rider) {
   const itemWidth = 420;
-  const pointerX = itemWidth / 2;
 
-  const index = Math.abs(Math.floor((pos + pointerX) / itemWidth)) % CR_IMAGES.length;
-  const chosenKey = CR_IMAGES[index].key;
+  // Get container position
+  const container = document.querySelector("#cr-carousel-container");
+  const track = document.querySelector("#cr-carousel-track");
+
+  const containerRect = container.getBoundingClientRect();
+  const trackRect = track.getBoundingClientRect();
+
+  // Pointer is centered inside container
+  const pointerX = containerRect.left + containerRect.width / 2;
+
+  // Find which item covers the pointer
+  const items = document.querySelectorAll(".cr-item");
+  let chosenKey = "adv";
+
+  for (const item of items) {
+    const r = item.getBoundingClientRect();
+    if (r.left <= pointerX && r.right >= pointerX) {
+      chosenKey = item.dataset.key;
+      break;
+    }
+  }
 
   cr_finalize(rider, chosenKey);
-
-  cr_flashWinner(); // winning flash effect
+  cr_flashWinner();
 }
 
 
