@@ -105,20 +105,19 @@ function cr_spin() {
    STOP CAROUSEL & DETECT RESULT
    =============================== */
 function cr_stopCarousel(pos, rider) {
-  const items = document.querySelectorAll(".cr-item");
-  const pointerX = 200; // pointer is centered
+  // Width of each item (same as CSS)
+  const itemWidth = 420;
 
-  let chosen = null;
-  items.forEach(item => {
-    const rect = item.getBoundingClientRect();
-    if (rect.left < pointerX && rect.right > pointerX) {
-      chosen = item.dataset.key;
-    }
-  });
+  // Convert negative position to positive index
+  let index = Math.abs(Math.round(pos / itemWidth));
 
-  if (!chosen) chosen = "adv"; // fallback
+  // Reduce index to within CR_IMAGES repeated sequence
+  index = index % CR_IMAGES.length;
 
-  cr_finalize(rider, chosen);
+  // Now we have the correct bike index
+  const chosenKey = CR_IMAGES[index].key;
+
+  cr_finalize(rider, chosenKey);
 }
 
 /* ===============================
