@@ -105,16 +105,14 @@ function cr_spin() {
    STOP CAROUSEL & DETECT RESULT
    =============================== */
 function cr_stopCarousel(pos, rider) {
-  // Width of each item (same as CSS)
-  const itemWidth = 420;
+  const itemWidth = 420; // width of each image card
 
-  // Convert negative position to positive index
-  let index = Math.abs(Math.round(pos / itemWidth));
+  // Adjust pos by half-width so pointer aligns correctly
+  let index = Math.abs(Math.round((pos + itemWidth / 2) / itemWidth));
 
-  // Reduce index to within CR_IMAGES repeated sequence
+  // Wrap index within number of unique images
   index = index % CR_IMAGES.length;
 
-  // Now we have the correct bike index
   const chosenKey = CR_IMAGES[index].key;
 
   cr_finalize(rider, chosenKey);
