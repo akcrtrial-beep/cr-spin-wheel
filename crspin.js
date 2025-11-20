@@ -1,184 +1,208 @@
-/* === CONFIG === */
-const IMG_RETRO = "https://chennairenegades.com/wp-content/uploads/2025/11/Retro.jpg";
-const IMG_SPORTS = "https://chennairenegades.com/wp-content/uploads/2025/11/Sports.jpg";
-const IMG_ADV   = "https://chennairenegades.com/wp-content/uploads/2025/11/ADV.jpg";
+/* ===============================
+   CR — Slot Machine Carousel Picker
+   =============================== */
 
+const CR_IMAGES = [
+  { key: "retro", url: "https://chennairenegades.com/wp-content/uploads/2025/11/Retro.jpg", label: "Retro Cruiser (1-bed)" },
+  { key: "sports", url: "https://chennairenegades.com/wp-content/uploads/2025/11/Sports.jpg", label: "Modern Sports (2-bed)" },
+  { key: "adv", url: "https://chennairenegades.com/wp-content/uploads/2025/11/ADV.jpg", label: "ADV Bike (5-bed)" },
+];
+
+// Rider list
 const RIDERS = [
   "Sridhar C","Premnath Rajan","Satish kumar Shankaran","Manikandan Arumugam","Mohan Murthy",
   "Lakshmi Narayanan S","Vignesh Balasubramani","Rameshkumar S","Nikkil Nair","Abhilash S",
   "Shivam Saluja","Balaji Dilli Babu","Jayapal N K","Rahul Raj","Ganapathy Ganesan",
-  "Sendhil Nathan","Ananthrakishnan T C","Jiju Pushkaran","Santosh Krishnan","Jalapathy K",
+  "Sendhil Nathan","Ananthakrishnan T C","Jiju Pushkaran","Santosh Krishnan","Jalapathy K",
   "Sugheendran","Chandrasekar V","Srinivasan Sundar","Sangeeth Kumar Vasudevan","Raghavan Vijayaraghavan",
   "Venkatesan Srinivasan","Pending Rider"
 ].sort();
 
-let available = { singles:3, doubles:14, fives:10 };
+// Room counts
+let available = { retro: 3, sports: 14, adv: 10 };
 let assignments = [];
 let remaining = [...RIDERS];
+
 const ADMIN_PIN = "Ananth,@2025#";
 
-/* === INITIALIZE WHEEL === */
-function cr_initWheel() {
-  const wheel = document.getElementById('cr-wheel');
-  if (!wheel) return;
-  wheel.innerHTML = "";
-  const imgs = [IMG_RETRO, IMG_SPORTS, IMG_ADV];
-  const colors = ['#b91c1c','#0284c7','#7c3aed'];
+/* ===============================
+   BUILD CAROUSEL
+   =============================== */
+function cr_buildCarousel() {
+  const track = document.querySelector("#cr-carousel-track");
+  track.innerHTML = "";
 
-  for (let i=0;i<3;i++) {
-    const seg = document.createElement("div");
-    seg.className = "segment";
-    seg.style.transform = `rotate(${i*120}deg) skewY(-30deg)`;
-    seg.style.background = `linear-gradient(135deg, ${colors[i]}, #000)`;
-    seg.innerHTML = `
-      <div style="transform:skewY(30deg) translate(-10%,-10%);
-                  width:100%;height:100%;display:flex;align-items:center;
-                  justify-content:center;">
-        <img src="${imgs[i]}" style="width:140%;height:140%;object-fit:cover;">
-      </div>`;
-    wheel.appendChild(seg);
+  // Create a long repeated sequence for infinite loop
+  for (let i = 0; i < 20; i++) {
+    CR_IMAGES.forEach(img => {
+      const el = document.createElement("div");
+      el.className = "cr-item";
+      el.innerHTML = `<img src="${img.url}">`;
+      el.dataset.key = img.key;
+      track.appendChild(el);
+    });
   }
 }
 
-/* === RENDER RIDERS === */
+/* ===============================
+   RENDER RIDERS
+   =============================== */
 function cr_renderRiders() {
-  const list = document.getElementById("cr-riders-list");
-  const sel  = document.getElementById("cr-select");
-  if (!list || !sel) return;
-
+  const list = document.querySelector("#cr-riders-list");
+  const sel = document.querySelector("#cr-select");
   list.innerHTML = "";
-  sel.innerHTML  = '<option value="">Select your name</option>';
+  sel.innerHTML = `<option value="">Select your name</option>`;
 
-  remaining.forEach(name => {
+  remaining.forEach(r => {
     const d = document.createElement("div");
-    d.className = "rider-item";
-    d.textContent = name;
-    d.onclick = ()=> sel.value = name;
+    d.className = "cr-rider";
+    d.textContent = r;
+    d.onclick = () => { sel.value = r };
     list.appendChild(d);
 
     const o = document.createElement("option");
-    o.value = name;
-    o.textContent = name;
+    o.value = r;
+    o.textContent = r;
     sel.appendChild(o);
   });
 }
 
-/* === LOGIC HELPERS === */
-function cr_available() {
-  const out = [];
-  if (available.singles>0) out.push(0);
-  if (available.doubles>0) out.push(1);
-  if (available.fives>0) out.push(2);
-  return out;
+/* ===============================
+   SPIN CAROUSEL
+   =============================== */
+let spinning = false;
+
+function cr_spin() {
+  if (spinning) return;
+  const sel = document.querySelector("#cr-select");
+  const rider = sel.value;
+  if (!rider) { alert("Select your name first"); return; }
+  if (assignments.find(a => a.rider === rider)) { alert("Already assigned"); return; }
+
+  spinning = true;
+
+  const track = document.querySelector("#cr-carousel-track");
+  track.style.transition = "none";
+  track.style.transform = "translateX(0px)";
+
+  let pos = 0;
+  const speed = 60; // fast speed
+  const duration = 10000; // 10 sec
+
+  const timer = setInterval(() => {
+    pos -= speed;
+    track.style.transform = `translateX(${pos}px)`;
+  }, 50);
+
+  setTimeout(() => {
+    clearInterval(timer);
+    cr_stopCarousel(pos, rider);
+    spinning = false;
+  }, duration);
 }
 
-function cr_pickIndex() {
-  const opt = cr_available();
-  if (opt.length === 0) return null;
-  return opt[Math.floor(Math.random()*opt.length)];
-}
+/* ===============================
+   STOP CAROUSEL & DETECT RESULT
+   =============================== */
+function cr_stopCarousel(pos, rider) {
+  const items = document.querySelectorAll(".cr-item");
+  const pointerX = 200; // pointer is centered
 
-/* === ENGINE REV SOUND === */
-function cr_revSound(sec=3.0) {
-  try {
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const o=ctx.createOscillator(),g=ctx.createGain();
-    o.type='sawtooth';
-    o.frequency.setValueAtTime(160,ctx.currentTime);
-    o.frequency.exponentialRampToValueAtTime(900,ctx.currentTime+sec*0.9);
-    g.gain.setValueAtTime(0.0001,ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.08,ctx.currentTime+0.05);
-    g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+sec);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(); o.stop(ctx.currentTime+sec+0.05);
-  } catch(e) {}
-}
-
-/* === SPIN ANIMATION === */
-function cr_spinTo(idx, after) {
-  const base = 4 + Math.floor(Math.random()*3);
-  const seg  = 120;
-  const minA = idx * seg;
-  const ang  = minA + Math.random()*(seg-20)+10;
-  const final= base*360 + (360-ang);
-
-  const wheel = document.getElementById("cr-wheel");
-  wheel.style.transition="transform 3.2s cubic-bezier(.17,.67,.2,1)";
-  wheel.style.transform=`rotate(${final}deg)`;
-
-  wheel.addEventListener("transitionend", function h(){
-    wheel.removeEventListener("transitionend",h);
-    setTimeout(after,250);
+  let chosen = null;
+  items.forEach(item => {
+    const rect = item.getBoundingClientRect();
+    if (rect.left < pointerX && rect.right > pointerX) {
+      chosen = item.dataset.key;
+    }
   });
 
-  cr_revSound();
+  if (!chosen) chosen = "adv"; // fallback
+
+  cr_finalize(rider, chosen);
 }
 
-/* === ASSIGN === */
-function cr_assign(rider, idx){
-  let key=null;
+/* ===============================
+   ASSIGN ROOM
+   =============================== */
+function cr_finalize(rider, key) {
+  if (available[key] <= 0) {
+    // fallback available type
+    if (available.retro > 0) key = "retro";
+    else if (available.sports > 0) key = "sports";
+    else key = "adv";
+  }
 
-  if (available.singles>0 || available.doubles>0) {
-    if(idx===0 && available.singles>0) key='retro';
-    else if(idx===1 && available.doubles>0) key='modern';
-    else if(idx===2 && available.fives>0) key='adv';
-    else {
-      if(available.singles>0) key='retro';
-      else if(available.doubles>0) key='modern';
-      else key='adv';
-    }
-  } else key='adv';
+  available[key] -= 1;
+  const now = new Date().toLocaleString();
 
-  if(key==='retro') available.singles--;
-  if(key==='modern') available.doubles--;
-  if(key==='adv')    available.fives--;
+  assignments.push({
+    rider,
+    key,
+    time: now
+  });
 
-  const t = new Date().toLocaleString();
-  assignments.push({ rider:rider, bikeKey:key, time:t });
   remaining = remaining.filter(r => r !== rider);
-
+  cr_save();
   cr_renderRiders();
-  const res = document.getElementById("cr-result");
-  res.textContent = rider + " → " +
-        (key==='retro'?'Retro Cruiser':
-        (key==='modern'?'Modern Speed':'ADV Bike'));
+  cr_updateAdminPanel();
+
+  const name = CR_IMAGES.find(i => i.key === key).label;
+  document.querySelector("#cr-result").textContent = `${rider} → ${name}`;
 }
 
-/* === ADMIN === */
-function adminLogin(){
-  const x = prompt("Enter admin PIN");
-  if(x===ADMIN_PIN){
-    document.getElementById("cr-admin-panel").style.display="block";
-  } else alert("Incorrect PIN.");
+/* ===============================
+   ADMIN / SAVE STATE
+   =============================== */
+function cr_save() {
+  localStorage.setItem("cr_assign", JSON.stringify(assignments));
+  localStorage.setItem("cr_avail", JSON.stringify(available));
+  localStorage.setItem("cr_rem", JSON.stringify(remaining));
 }
 
-/* === SPIN BUTTON === */
-function cr_initSpinButton(){
-  const btn = document.getElementById("cr-spin");
-  const sel = document.getElementById("cr-select");
-
-  btn.onclick=function(){
-    const r = sel.value;
-    if(!r) return alert("Select your name first");
-    if(assignments.find(a=>a.rider===r)) return alert("Already assigned");
-
-    const idx = cr_pickIndex();
-    if(idx===null) return alert("No slots left");
-
-    btn.disabled=true;
-    sel.disabled=true;
-
-    cr_spinTo(idx, ()=>{
-      cr_assign(r,idx);
-      btn.disabled=false;
-      sel.disabled=false;
-    });
-  };
+function cr_load() {
+  try {
+    assignments = JSON.parse(localStorage.getItem("cr_assign")) || [];
+    available = JSON.parse(localStorage.getItem("cr_avail")) || available;
+    remaining = JSON.parse(localStorage.getItem("cr_rem")) || remaining;
+  } catch (e) {}
 }
 
-/* === INIT PAGE === */
-setTimeout(()=>{
-  cr_initWheel();
+function cr_updateAdminPanel() {
+  document.querySelector("#s-retro").textContent = available.retro;
+  document.querySelector("#s-sports").textContent = available.sports;
+  document.querySelector("#s-adv").textContent = available.adv;
+
+  const body = document.querySelector("#cr-report-body");
+  body.innerHTML = "";
+  assignments.forEach(a => {
+    body.innerHTML += `
+      <tr>
+        <td>${a.rider}</td>
+        <td>${a.key}</td>
+        <td>${a.time}</td>
+      </tr>
+    `;
+  });
+}
+
+/* ===============================
+   ADMIN LOGIN
+   =============================== */
+function adminLogin() {
+  const pin = prompt("Enter PIN:");
+  if (pin === ADMIN_PIN) {
+    document.querySelector("#cr-admin-panel").style.display = "block";
+  } else {
+    alert("Incorrect PIN");
+  }
+}
+
+/* ===============================
+   INIT
+   =============================== */
+window.addEventListener("load", () => {
+  cr_load();
+  cr_buildCarousel();
   cr_renderRiders();
-  cr_initSpinButton();
-},300);
+  cr_updateAdminPanel();
+});
